@@ -51,7 +51,7 @@
             padding: 20px;
         }
 
-        /* 縦書きの俳句表示エリア（絶対1列・折り返し禁止） */
+        /* 縦書きの俳句表示エリア（絶対1列・文字間隔自動調整） */
         .haiku-stage {
             writing-mode: vertical-rl;
             -webkit-writing-mode: vertical-rl;
@@ -70,11 +70,16 @@
             transform: scale(0.98);
         }
 
-        /* 右上 i ボタン */
+        /* 右上 i ボタン（タップ範囲を広く確保） */
         .info-trigger {
             position: fixed;
-            top: calc(20px + env(safe-area-inset-top));
-            right: 25px;
+            top: calc(10px + env(safe-area-inset-top));
+            right: 15px;
+            width: 50px;             /* タップ反応エリアの幅 */
+            height: 50px;            /* タップ反応エリアの高さ */
+            display: flex;
+            justify-content: center;
+            align-items: center;
             font-family: serif;
             font-style: italic;
             font-size: 1.1rem;
@@ -83,7 +88,6 @@
             z-index: 100;
             opacity: 0.6;
             transition: opacity 0.2s;
-            padding: 5px;
         }
 
         .info-trigger:hover {
@@ -167,8 +171,7 @@
         const SPREADSHEET_ID = '1m0y8AOJNx1Ad4I44poPheQAQNki1-QQIwi9wSw8jaBg';
         
         let haikuList = [];
-        let historyIndices = []; // 表示した句の履歴インデックス
-        let historyPointer = -1;  // 現在どの履歴にいるかのポインター
+        let currentIndex = -1;
         let isInfoOpen = false;
 
         // JSONPデータ受信
@@ -191,45 +194,25 @@
             }
         };
 
-        // 次の句へ進む（履歴を進める / 新規ランダム）
+        // 次の句（ランダム表示）
         function showNextHaiku() {
             if (haikuList.length === 0) return;
-
-            if (historyPointer < historyIndices.length - 1) {
-                // 履歴を前に戻った状態からの「次へ」
-                historyPointer++;
-                renderHaiku(historyIndices[historyPointer]);
-            } else {
-                // 新しい句をランダムに抽選
-                let newIndex;
-                const currentIdx = historyPointer >= 0 ? historyIndices[historyPointer] : -1;
-                do {
-                    newIndex = Math.floor(Math.random() * haikuList.length);
-                } while (newIndex === currentIdx && haikuList.length > 1);
-
-                historyIndices.push(newIndex);
-                historyPointer = historyIndices.length - 1;
-                renderHaiku(newIndex);
-            }
-        }
-
-        // 前の句へ戻る（履歴を1つ遡る）
-        function showPrevHaiku() {
-            if (historyPointer > 0) {
-                historyPointer--;
-                renderHaiku(historyIndices[historyPointer]);
-            }
-        }
-
-        // 俳句の描画処理（文字間隔調整）
-        function renderHaiku(index) {
+            
             if (isInfoOpen) toggleInfo(false);
 
             const stage = document.getElementById('haikuStage');
             stage.classList.add('fade-out');
 
             setTimeout(() => {
-                const currentItem = haikuList[index];
+                let newIndex;
+                do {
+                    newIndex = Math.floor(Math.random() * haikuList.length);
+                } while (newIndex === currentIndex && haikuList.length > 1);
+                
+                currentIndex = newIndex;
+                const currentItem = haikuList[currentIndex];
+
+                // 俳句本文
                 const text = currentItem.haiku;
                 stage.textContent = text;
 
@@ -238,12 +221,11 @@
                 let spacing = 0.15; // 基本間隔 (em)
 
                 if (charCount > 14) {
-                    // 15文字以上の場合、文字数が増えるほど文字間隔を詰める
                     spacing = Math.max(0.01, 0.15 - ((charCount - 14) * 0.025));
                 }
                 stage.style.letterSpacing = `${spacing}em`;
 
-                // 右上情報データの更新
+                // 右上情報データ
                 const kigo = currentItem.kigo || '';
                 const season = currentItem.seasonDetail ? `（${currentItem.seasonDetail}）` : '';
                 document.getElementById('infoKigoSeason').textContent = `${kigo}${season}`;
@@ -255,7 +237,7 @@
 
         // --- 操作系イベント設定 ---
 
-        // 1. クリック操作（画面クリックで次の句へ）
+        // 1. クリック操作
         document.addEventListener('click', (e) => {
             if (e.target.closest('#infoBtn') || e.target.closest('#infoDisplay')) return;
 
@@ -267,23 +249,18 @@
             showNextHaiku();
         });
 
-        // 2. キーボード操作（矢印キー・スペース）
+        // 2. キーボード操作
         document.addEventListener('keydown', (e) => {
-            if (isInfoOpen && ['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', ' ', 'Enter'].includes(e.key)) {
-                toggleInfo(false);
-                return;
-            }
-
-            if (e.key === 'ArrowLeft') {
-                // 左矢印：前の句へ戻る
-                showPrevHaiku();
-            } else if (['ArrowRight', 'ArrowDown', 'ArrowUp', ' ', 'Enter'].includes(e.key)) {
-                // 右矢印・スペース・Enter：次の句へ
-                showNextHaiku();
+            if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', ' ', 'Enter'].includes(e.key)) {
+                if (isInfoOpen) {
+                    toggleInfo(false);
+                } else {
+                    showNextHaiku();
+                }
             }
         });
 
-        // 3. タッチ・スワイプ操作（スマホ用）
+        // 3. タッチ・スワイプ操作
         let touchStartX = 0;
         let touchStartY = 0;
 
@@ -297,25 +274,10 @@
 
             const touchEndX = e.changedTouches[0].screenX;
             const touchEndY = e.changedTouches[0].screenY;
-            const diffX = touchEndX - touchStartX;
-            const diffY = touchEndY - touchStartY;
+            const diffX = Math.abs(touchEndX - touchStartX);
+            const diffY = Math.abs(touchEndY - touchStartY);
 
-            // スワイプ判定（30px以上の移動）
-            if (Math.abs(diffX) > 30 && Math.abs(diffX) > Math.abs(diffY)) {
-                if (isInfoOpen) {
-                    toggleInfo(false);
-                    return;
-                }
-
-                if (diffX > 0) {
-                    // 右スワイプ（→）：前の句へ戻る
-                    showPrevHaiku();
-                } else {
-                    // 左スワイプ（←）：次の句へ進む
-                    showNextHaiku();
-                }
-            } else if (Math.abs(diffX) < 10 && Math.abs(diffY) < 10) {
-                // タップ操作：次の句へ
+            if (diffX > 30 || diffY > 30 || (diffX < 10 && diffY < 10)) {
                 if (isInfoOpen) {
                     toggleInfo(false);
                 } else {
