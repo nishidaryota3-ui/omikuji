@@ -70,13 +70,13 @@
             transform: scale(0.98);
         }
 
-        /* 右上 i ボタン（タップ範囲を広く確保） */
+        /* 右上 i ボタン（タップ反応領域を56pxに拡大） */
         .info-trigger {
             position: fixed;
-            top: calc(10px + env(safe-area-inset-top));
-            right: 15px;
-            width: 50px;             /* タップ反応エリアの幅 */
-            height: 50px;            /* タップ反応エリアの高さ */
+            top: calc(8px + env(safe-area-inset-top));
+            right: 12px;
+            width: 56px;             /* タップ反応エリアの幅をさらに拡大 */
+            height: 56px;            /* タップ反応エリアの高さをさらに拡大 */
             display: flex;
             justify-content: center;
             align-items: center;
@@ -177,15 +177,24 @@
         // JSONPデータ受信
         window.mainDataReceived = function(data) {
             const rows = data.table.rows;
-            haikuList = rows.map(r => {
+            
+            // データを配列化
+            const rawList = rows.map(r => {
                 const getVal = (colIdx) => (r.c && r.c[colIdx] && r.c[colIdx].v !== null) ? String(r.c[colIdx].v) : '';
                 return {
-                    haiku: getVal(0),        // A列: 俳句
-                    author: getVal(1),       // B列: 作者名
-                    kigo: getVal(3),         // D列: 季語
-                    seasonDetail: getVal(7)   // H列: 詳細季節（例：初春）
+                    haiku: getVal(0).trim(),      // A列: 俳句
+                    author: getVal(1).trim(),     // B列: 作者名
+                    kigo: getVal(3).trim(),       // D列: 季語
+                    seasonDetail: getVal(7).trim() // H列: 詳細季節
                 };
-            }).filter(item => item.haiku.trim() !== '');
+            }).filter(item => item.haiku !== '');
+
+            // 1行目の見出し（「俳句」など）を自動除外する
+            if (rawList.length > 0 && (rawList[0].haiku === '俳句' || rawList[0].haiku === '句')) {
+                haikuList = rawList.slice(1);
+            } else {
+                haikuList = rawList;
+            }
 
             if (haikuList.length > 0) {
                 showNextHaiku();
