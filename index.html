@@ -5,16 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>おみ句じ</title>
 
-    <!-- PWA化のための設定 -->
+    <!-- PWA / スマホアプリ化の設定 -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#fcfbf7">
+    
+    <!-- アプリアイコン設定（icon.pngを配置するとホーム画面に反映されます） -->
+    <link rel="apple-touch-icon" href="icon.png">
     
     <style>
         :root {
             --bg-color: #fcfbf7;
             --text-color: #2b2b2b;
-            --sub-color: #666666;
+            --sub-color: #888888;
         }
 
         * {
@@ -66,65 +69,53 @@
             transform: scale(0.98);
         }
 
-        /* 右上 i ボタン */
+        /* 右上 i ボタン（控えめなオリジナルデザイン） */
         .info-trigger {
             position: fixed;
             top: calc(20px + env(safe-area-inset-top));
-            right: 20px;
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
-            border: 1px solid rgba(0,0,0,0.15);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: sans-serif;
+            right: 25px;
+            font-family: serif;
             font-style: italic;
-            font-weight: bold;
             font-size: 1.1rem;
             color: var(--sub-color);
             cursor: pointer;
             z-index: 100;
-            background: rgba(255,255,255,0.7);
-            backdrop-filter: blur(4px);
-            transition: background 0.2s;
+            opacity: 0.6;
+            transition: opacity 0.2s;
+            padding: 5px;
         }
 
         .info-trigger:hover {
-            background: rgba(240,240,240,0.9);
+            opacity: 1;
         }
 
-        /* 情報パネル（下からスライドイン） */
-        .info-panel {
+        /* 右上の情報表示エリア（iボタンの場所にかぶせて薄く表示） */
+        .info-display {
             position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            padding: 25px 20px calc(25px + env(safe-area-inset-bottom));
-            background: rgba(252, 251, 247, 0.95);
-            backdrop-filter: blur(10px);
-            border-top: 1px solid rgba(0,0,0,0.08);
-            box-shadow: 0 -5px 20px rgba(0,0,0,0.05);
-            transform: translateY(100%);
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            z-index: 90;
-            text-align: center;
-        }
-
-        .info-panel.active {
-            transform: translateY(0);
-        }
-
-        .info-content {
-            font-size: 1.15rem;
-            letter-spacing: 0.08em;
+            top: calc(20px + env(safe-area-inset-top));
+            right: 25px;
+            font-size: 0.95rem;
             color: var(--sub-color);
+            letter-spacing: 0.05em;
+            z-index: 90;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            text-align: right;
+            line-height: 1.6;
+            background-color: rgba(252, 251, 247, 0.85);
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .info-display.active {
+            opacity: 1;
+            pointer-events: auto;
         }
 
         .info-author {
-            margin-left: 14px;
+            margin-left: 8px;
             color: var(--text-color);
-            font-weight: 500;
         }
 
         /* 初回ローディング表示 */
@@ -147,10 +138,8 @@
         <!-- 右上 i ボタン -->
         <div id="infoBtn" class="info-trigger">i</div>
 
-        <!-- 下部情報パネル -->
-        <div id="infoPanel" class="info-panel">
-            <div id="infoContent" class="info-content">-</div>
-        </div>
+        <!-- 右上 情報表示テキスト -->
+        <div id="infoDisplay" class="info-display">-</div>
     </div>
 
     <script>
@@ -169,7 +158,7 @@
                     haiku: getVal(0),        // A列: 俳句
                     author: getVal(1),       // B列: 作者名
                     kigo: getVal(3),         // D列: 季語
-                    seasonDetail: getVal(7)   // H列: 詳細季節
+                    seasonDetail: getVal(7)   // H列: 詳細季節（例：夏（三夏））
                 };
             }).filter(item => item.haiku.trim() !== '');
 
@@ -184,6 +173,9 @@
         function showNextHaiku() {
             if (haikuList.length === 0) return;
             
+            // 句を切り替える時は情報表示を閉じる
+            if (isInfoOpen) toggleInfo(false);
+
             const stage = document.getElementById('haikuStage');
             stage.classList.add('fade-out');
 
@@ -202,19 +194,22 @@
             currentIndex = newIndex;
             const currentItem = haikuList[currentIndex];
 
+            // 俳句本文をセット
             document.getElementById('haikuStage').textContent = currentItem.haiku;
 
-            const seasonText = currentItem.seasonDetail || currentItem.kigo || '';
-            const authorText = currentItem.author || '';
-            document.getElementById('infoContent').innerHTML = `${seasonText}<span class="info-author">${authorText}</span>`;
+            // 情報テキストの組み上げ（例：夏（三夏） 季語：風鈴 西田上酢）
+            const seasonText = currentItem.seasonDetail || '';
+            const kigoText = currentItem.kigo ? ` 季語：${currentItem.kigo}` : '';
+            const authorText = currentItem.author ? `<span class="info-author">${currentItem.author}</span>` : '';
+            
+            document.getElementById('infoDisplay').innerHTML = `${seasonText}${kigoText}${authorText}`;
         }
 
         // --- 操作系イベント設定 ---
 
         // 1. クリック操作（画面どこでもクリックで次へ）
         document.addEventListener('click', (e) => {
-            // iボタンや情報パネルのクリック時は発動しない
-            if (e.target.closest('#infoBtn') || e.target.closest('#infoPanel')) return;
+            if (e.target.closest('#infoBtn') || e.target.closest('#infoDisplay')) return;
 
             if (isInfoOpen) {
                 toggleInfo(false);
@@ -224,9 +219,9 @@
             showNextHaiku();
         });
 
-        // 2. キーボード操作（矢印キー・スペース・Enterで次へ）
+        // 2. キーボード操作（矢印キー・スペース・Enter）
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === ' ' || e.key === 'Enter') {
+            if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', ' ', 'Enter'].includes(e.key)) {
                 if (isInfoOpen) {
                     toggleInfo(false);
                 } else {
@@ -245,14 +240,13 @@
         }, {passive: true});
 
         document.addEventListener('touchend', (e) => {
-            if (e.target.closest('#infoBtn') || e.target.closest('#infoPanel')) return;
+            if (e.target.closest('#infoBtn') || e.target.closest('#infoDisplay')) return;
 
             const touchEndX = e.changedTouches[0].screenX;
             const touchEndY = e.changedTouches[0].screenY;
             const diffX = Math.abs(touchEndX - touchStartX);
             const diffY = Math.abs(touchEndY - touchStartY);
 
-            // スワイプまたはタップ判定
             if (diffX > 30 || diffY > 30 || (diffX < 10 && diffY < 10)) {
                 if (isInfoOpen) {
                     toggleInfo(false);
@@ -262,20 +256,28 @@
             }
         }, {passive: true});
 
-        // i ボタン処理
+        // i ボタン / 情報表示の切り替え
         const infoBtn = document.getElementById('infoBtn');
+        const infoDisplay = document.getElementById('infoDisplay');
+
         infoBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             toggleInfo(!isInfoOpen);
         });
 
+        infoDisplay.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleInfo(false);
+        });
+
         function toggleInfo(show) {
             isInfoOpen = show;
-            const panel = document.getElementById('infoPanel');
             if (isInfoOpen) {
-                panel.classList.add('active');
+                infoBtn.style.opacity = '0';
+                infoDisplay.classList.add('active');
             } else {
-                panel.classList.remove('active');
+                infoBtn.style.opacity = '0.6';
+                infoDisplay.classList.remove('active');
             }
         }
 
