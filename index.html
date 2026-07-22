@@ -15,7 +15,6 @@
             --bg-color: #fcfbf7;
             --text-color: #2b2b2b;
             --sub-color: #666666;
-            --accent-color: #a83232;
         }
 
         * {
@@ -34,6 +33,7 @@
             font-family: "Hiragino Mincho ProN", "Yu Mincho", "Shippori Mincho", serif;
             user-select: none;
             -webkit-user-select: none;
+            cursor: pointer;
         }
 
         /* アプリ全体のコンテナ */
@@ -52,13 +52,12 @@
             writing-mode: vertical-rl;
             -webkit-writing-mode: vertical-rl;
             text-orientation: upright;
-            font-size: 1.8rem;
+            font-size: 2rem;
             line-height: 2.2;
             letter-spacing: 0.15em;
-            max-height: 70vh;
+            max-height: 75vh;
             max-width: 80vw;
             transition: opacity 0.25s ease, transform 0.25s ease;
-            cursor: pointer;
         }
 
         /* 句切り替え時のアニメーション */
@@ -72,8 +71,8 @@
             position: fixed;
             top: calc(20px + env(safe-area-inset-top));
             right: 20px;
-            width: 36px;
-            height: 36px;
+            width: 38px;
+            height: 38px;
             border-radius: 50%;
             border: 1px solid rgba(0,0,0,0.15);
             display: flex;
@@ -86,8 +85,13 @@
             color: var(--sub-color);
             cursor: pointer;
             z-index: 100;
-            background: rgba(255,255,255,0.6);
+            background: rgba(255,255,255,0.7);
             backdrop-filter: blur(4px);
+            transition: background 0.2s;
+        }
+
+        .info-trigger:hover {
+            background: rgba(240,240,240,0.9);
         }
 
         /* 情報パネル（下からスライドイン） */
@@ -112,13 +116,13 @@
         }
 
         .info-content {
-            font-size: 1.1rem;
+            font-size: 1.15rem;
             letter-spacing: 0.08em;
             color: var(--sub-color);
         }
 
         .info-author {
-            margin-left: 12px;
+            margin-left: 14px;
             color: var(--text-color);
             font-weight: 500;
         }
@@ -150,23 +154,22 @@
     </div>
 
     <script>
-        // スプレッドシートID
         const SPREADSHEET_ID = '1m0y8AOJNx1Ad4I44poPheQAQNki1-QQIwi9wSw8jaBg';
         
         let haikuList = [];
         let currentIndex = -1;
         let isInfoOpen = false;
 
-        // JSONP経由でスプレッドシートデータ受信
+        // JSONPデータ受信
         window.mainDataReceived = function(data) {
             const rows = data.table.rows;
             haikuList = rows.map(r => {
                 const getVal = (colIdx) => (r.c && r.c[colIdx] && r.c[colIdx].v !== null) ? String(r.c[colIdx].v) : '';
                 return {
-                    haiku: getVal(0),    // A列: 俳句
-                    author: getVal(1),   // B列: 作者名
-                    kigo: getVal(3),     // D列: 季語
-                    seasonDetail: getVal(7) // H列: 詳細季節（例: 夏（三夏））
+                    haiku: getVal(0),        // A列: 俳句
+                    author: getVal(1),       // B列: 作者名
+                    kigo: getVal(3),         // D列: 季語
+                    seasonDetail: getVal(7)   // H列: 詳細季節
                 };
             }).filter(item => item.haiku.trim() !== '');
 
@@ -177,7 +180,7 @@
             }
         };
 
-        // 次の句を表示（ランダム）
+        // 次の句（ランダム表示）
         function showNextHaiku() {
             if (haikuList.length === 0) return;
             
@@ -187,11 +190,10 @@
             setTimeout(() => {
                 showRandomHaiku();
                 stage.classList.remove('fade-out');
-            }, 250);
+            }, 200);
         }
 
         function showRandomHaiku() {
-            // 直前と同じ句が連続で出ないように抽選
             let newIndex;
             do {
                 newIndex = Math.floor(Math.random() * haikuList.length);
@@ -200,49 +202,67 @@
             currentIndex = newIndex;
             const currentItem = haikuList[currentIndex];
 
-            // 俳句を表示
             document.getElementById('haikuStage').textContent = currentItem.haiku;
 
-            // 情報パネルの中身を更新（例：「夏（三夏） 西田上酢」）
             const seasonText = currentItem.seasonDetail || currentItem.kigo || '';
             const authorText = currentItem.author || '';
             document.getElementById('infoContent').innerHTML = `${seasonText}<span class="info-author">${authorText}</span>`;
         }
 
-        // タッチ / スワイプ イベント制御
-        let touchStartX = 0;
-        let touchStartY = 0;
+        // --- 操作系イベント設定 ---
 
-        const container = document.getElementById('app-container');
-
-        container.addEventListener('touchstart', (e) => {
-            touchStartX = e.changedTouches[0].screenX;
-            touchStartY = e.changedTouches[0].screenY;
-        }, {passive: true});
-
-        container.addEventListener('touchend', (e) => {
-            const touchEndX = e.changedTouches[0].screenX;
-            const touchEndY = e.changedTouches[0].screenY;
-            
-            const diffX = Math.abs(touchEndX - touchStartX);
-            const diffY = Math.abs(touchEndY - touchStartY);
-
-            // iボタンや情報パネルのタップ時は句を切り替えない
+        // 1. クリック操作（画面どこでもクリックで次へ）
+        document.addEventListener('click', (e) => {
+            // iボタンや情報パネルのクリック時は発動しない
             if (e.target.closest('#infoBtn') || e.target.closest('#infoPanel')) return;
 
-            // 情報パネルが開いているときに画面を叩いたらパネルを閉じるだけにする
             if (isInfoOpen) {
                 toggleInfo(false);
                 return;
             }
 
-            // スワイプまたはタップで次の句へ
+            showNextHaiku();
+        });
+
+        // 2. キーボード操作（矢印キー・スペース・Enterで次へ）
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === ' ' || e.key === 'Enter') {
+                if (isInfoOpen) {
+                    toggleInfo(false);
+                } else {
+                    showNextHaiku();
+                }
+            }
+        });
+
+        // 3. タッチ・スワイプ操作（スマホ用）
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, {passive: true});
+
+        document.addEventListener('touchend', (e) => {
+            if (e.target.closest('#infoBtn') || e.target.closest('#infoPanel')) return;
+
+            const touchEndX = e.changedTouches[0].screenX;
+            const touchEndY = e.changedTouches[0].screenY;
+            const diffX = Math.abs(touchEndX - touchStartX);
+            const diffY = Math.abs(touchEndY - touchStartY);
+
+            // スワイプまたはタップ判定
             if (diffX > 30 || diffY > 30 || (diffX < 10 && diffY < 10)) {
-                showNextHaiku();
+                if (isInfoOpen) {
+                    toggleInfo(false);
+                } else {
+                    showNextHaiku();
+                }
             }
         }, {passive: true});
 
-        // i ボタンのトグル
+        // i ボタン処理
         const infoBtn = document.getElementById('infoBtn');
         infoBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -259,7 +279,7 @@
             }
         }
 
-        // データの読み込み開始
+        // データ取得
         const script = document.createElement('script');
         script.src = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?range=A:H&tqx=responseHandler:mainDataReceived`;
         document.body.appendChild(script);
