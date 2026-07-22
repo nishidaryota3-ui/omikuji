@@ -89,23 +89,26 @@
             opacity: 1;
         }
 
-        /* 右上の情報表示エリア（二段構造・センター揃え） */
+        /* 右上の情報表示エリア（完全センター揃え構造） */
         .info-display {
             position: fixed;
-            top: calc(20px + env(safe-area-inset-top));
-            right: 20px;
+            top: calc(16px + env(safe-area-inset-top));
+            right: 15px;
             z-index: 90;
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.3s ease;
-            text-align: center;
-            line-height: 1.5;
-            background-color: rgba(252, 251, 247, 0.85);
-            padding: 4px 8px;
-            border-radius: 4px;
+            background-color: rgba(252, 251, 247, 0.9);
+            padding: 6px 12px;
+            border-radius: 6px;
+            
+            /* 内部要素を完全に中央揃え */
             display: flex;
             flex-direction: column;
+            justify-content: center;
             align-items: center;
+            text-align: center;
+            width: max-content;
         }
 
         .info-display.active {
@@ -119,6 +122,8 @@
             color: var(--sub-color);
             letter-spacing: 0.05em;
             text-align: center;
+            width: 100%;
+            white-space: nowrap;
         }
 
         /* 下段：作者 */
@@ -126,8 +131,10 @@
             font-size: 0.95rem;
             color: var(--text-color);
             letter-spacing: 0.05em;
-            margin-top: 2px;
+            margin-top: 3px;
             text-align: center;
+            width: 100%;
+            white-space: nowrap;
         }
 
         /* 初回ローディング表示 */
