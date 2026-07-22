@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>おみ句じ</title>
+
+    <!-- PWA化のための設定 -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#fcfbf7">
+    
+    <style>
+        :root {
+            --bg-color: #fcfbf7;
+            --text-color: #2b2b2b;
+            --sub-color: #666666;
+            --accent-color: #a83232;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: "Hiragino Mincho ProN", "Yu Mincho", "Shippori Mincho", serif;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* アプリ全体のコンテナ */
+        #app-container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* 縦書きの俳句表示エリア */
+        .haiku-stage {
+            writing-mode: vertical-rl;
+            -webkit-writing-mode: vertical-rl;
+            text-orientation: upright;
+            font-size: 1.8rem;
+            line-height: 2.2;
+            letter-spacing: 0.15em;
+            max-height: 70vh;
+            max-width: 80vw;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            cursor: pointer;
+        }
+
+        /* 句切り替え時のアニメーション */
+        .haiku-stage.fade-out {
+            opacity: 0;
+            transform: scale(0.98);
+        }
+
+        /* 右上 i ボタン */
+        .info-trigger {
+            position: fixed;
+            top: calc(20px + env(safe-area-inset-top));
+            right: 20px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border: 1px solid rgba(0,0,0,0.15);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: sans-serif;
+            font-style: italic;
+            font-weight: bold;
+            font-size: 1.1rem;
+            color: var(--sub-color);
+            cursor: pointer;
+            z-index: 100;
+            background: rgba(255,255,255,0.6);
+            backdrop-filter: blur(4px);
+        }
+
+        /* 情報パネル（下からスライドイン） */
+        .info-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 25px 20px calc(25px + env(safe-area-inset-bottom));
+            background: rgba(252, 251, 247, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(0,0,0,0.08);
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.05);
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 90;
+            text-align: center;
+        }
+
+        .info-panel.active {
+            transform: translateY(0);
+        }
+
+        .info-content {
+            font-size: 1.1rem;
+            letter-spacing: 0.08em;
+            color: var(--sub-color);
+        }
+
+        .info-author {
+            margin-left: 12px;
+            color: var(--text-color);
+            font-weight: 500;
+        }
+
+        /* 初回ローディング表示 */
+        .loader {
+            font-size: 1rem;
+            color: var(--sub-color);
+            letter-spacing: 0.2em;
+            writing-mode: horizontal-tb;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="app-container">
+        <!-- 俳句メイン表示 -->
+        <div id="haikuStage" class="haiku-stage">
+            <div class="loader">読み込み中...</div>
+        </div>
+
+        <!-- 右上 i ボタン -->
+        <div id="infoBtn" class="info-trigger">i</div>
+
+        <!-- 下部情報パネル -->
+        <div id="infoPanel" class="info-panel">
+            <div id="infoContent" class="info-content">-</div>
+        </div>
+    </div>
+
+    <script>
+        // スプレッドシートID
+        const SPREADSHEET_ID = '1m0y8AOJNx1Ad4I44poPheQAQNki1-QQIwi9wSw8jaBg';
+        
+        let haikuList = [];
+        let currentIndex = -1;
+        let isInfoOpen = false;
+
+        // JSONP経由でスプレッドシートデータ受信
+        window.mainDataReceived = function(data) {
+            const rows = data.table.rows;
+            haikuList = rows.map(r => {
+                const getVal = (colIdx) => (r.c && r.c[colIdx] && r.c[colIdx].v !== null) ? String(r.c[colIdx].v) : '';
+                return {
+                    haiku: getVal(0),    // A列: 俳句
+                    author: getVal(1),   // B列: 作者名
+                    kigo: getVal(3),     // D列: 季語
+                    seasonDetail: getVal(7) // H列: 詳細季節（例: 夏（三夏））
+                };
+            }).filter(item => item.haiku.trim() !== '');
+
+            if (haikuList.length > 0) {
+                showRandomHaiku();
+            } else {
+                document.getElementById('haikuStage').innerHTML = '俳句が見つかりません';
+            }
+        };
+
+        // 次の句を表示（ランダム）
+        function showNextHaiku() {
+            if (haikuList.length === 0) return;
+            
+            const stage = document.getElementById('haikuStage');
+            stage.classList.add('fade-out');
+
+            setTimeout(() => {
+                showRandomHaiku();
+                stage.classList.remove('fade-out');
+            }, 250);
+        }
+
+        function showRandomHaiku() {
+            // 直前と同じ句が連続で出ないように抽選
+            let newIndex;
+            do {
+                newIndex = Math.floor(Math.random() * haikuList.length);
+            } while (newIndex === currentIndex && haikuList.length > 1);
+            
+            currentIndex = newIndex;
+            const currentItem = haikuList[currentIndex];
+
+            // 俳句を表示
+            document.getElementById('haikuStage').textContent = currentItem.haiku;
+
+            // 情報パネルの中身を更新（例：「夏（三夏） 西田上酢」）
+            const seasonText = currentItem.seasonDetail || currentItem.kigo || '';
+            const authorText = currentItem.author || '';
+            document.getElementById('infoContent').innerHTML = `${seasonText}<span class="info-author">${authorText}</span>`;
+        }
+
+        // タッチ / スワイプ イベント制御
+        let touchStartX = 0;
+        let touchStartY = 0;
+
+        const container = document.getElementById('app-container');
+
+        container.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+            touchStartY = e.changedTouches[0].screenY;
+        }, {passive: true});
+
+        container.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].screenX;
+            const touchEndY = e.changedTouches[0].screenY;
+            
+            const diffX = Math.abs(touchEndX - touchStartX);
+            const diffY = Math.abs(touchEndY - touchStartY);
+
+            // iボタンや情報パネルのタップ時は句を切り替えない
+            if (e.target.closest('#infoBtn') || e.target.closest('#infoPanel')) return;
+
+            // 情報パネルが開いているときに画面を叩いたらパネルを閉じるだけにする
+            if (isInfoOpen) {
+                toggleInfo(false);
+                return;
+            }
+
+            // スワイプまたはタップで次の句へ
+            if (diffX > 30 || diffY > 30 || (diffX < 10 && diffY < 10)) {
+                showNextHaiku();
+            }
+        }, {passive: true});
+
+        // i ボタンのトグル
+        const infoBtn = document.getElementById('infoBtn');
+        infoBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleInfo(!isInfoOpen);
+        });
+
+        function toggleInfo(show) {
+            isInfoOpen = show;
+            const panel = document.getElementById('infoPanel');
+            if (isInfoOpen) {
+                panel.classList.add('active');
+            } else {
+                panel.classList.remove('active');
+            }
+        }
+
+        // データの読み込み開始
+        const script = document.createElement('script');
+        script.src = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?range=A:H&tqx=responseHandler:mainDataReceived`;
+        document.body.appendChild(script);
+    </script>
+</body>
+</html>
