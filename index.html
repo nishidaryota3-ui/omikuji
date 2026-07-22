@@ -89,23 +89,23 @@
             opacity: 1;
         }
 
-        /* 右上の情報表示エリア（iボタンの場所にかぶせて薄く表示） */
+        /* 右上の情報表示エリア（二段構造・センター揃え） */
         .info-display {
             position: fixed;
             top: calc(20px + env(safe-area-inset-top));
-            right: 25px;
-            font-size: 0.95rem;
-            color: var(--sub-color);
-            letter-spacing: 0.05em;
+            right: 20px;
             z-index: 90;
             opacity: 0;
             pointer-events: none;
             transition: opacity 0.3s ease;
-            text-align: right;
-            line-height: 1.6;
+            text-align: center;
+            line-height: 1.5;
             background-color: rgba(252, 251, 247, 0.85);
             padding: 4px 8px;
             border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         .info-display.active {
@@ -113,9 +113,21 @@
             pointer-events: auto;
         }
 
+        /* 上段：季語（詳細季節） */
+        .info-kigo-season {
+            font-size: 0.85rem;
+            color: var(--sub-color);
+            letter-spacing: 0.05em;
+            text-align: center;
+        }
+
+        /* 下段：作者 */
         .info-author {
-            margin-left: 8px;
+            font-size: 0.95rem;
             color: var(--text-color);
+            letter-spacing: 0.05em;
+            margin-top: 2px;
+            text-align: center;
         }
 
         /* 初回ローディング表示 */
@@ -138,8 +150,11 @@
         <!-- 右上 i ボタン -->
         <div id="infoBtn" class="info-trigger">i</div>
 
-        <!-- 右上 情報表示テキスト -->
-        <div id="infoDisplay" class="info-display">-</div>
+        <!-- 右上 情報表示テキスト（二段構造・センター揃え） -->
+        <div id="infoDisplay" class="info-display">
+            <div id="infoKigoSeason" class="info-kigo-season"></div>
+            <div id="infoAuthor" class="info-author"></div>
+        </div>
     </div>
 
     <script>
@@ -158,7 +173,7 @@
                     haiku: getVal(0),        // A列: 俳句
                     author: getVal(1),       // B列: 作者名
                     kigo: getVal(3),         // D列: 季語
-                    seasonDetail: getVal(7)   // H列: 詳細季節（例：夏（三夏））
+                    seasonDetail: getVal(7)   // H列: 詳細季節（例：初春）
                 };
             }).filter(item => item.haiku.trim() !== '');
 
@@ -173,7 +188,6 @@
         function showNextHaiku() {
             if (haikuList.length === 0) return;
             
-            // 句を切り替える時は情報表示を閉じる
             if (isInfoOpen) toggleInfo(false);
 
             const stage = document.getElementById('haikuStage');
@@ -194,20 +208,21 @@
             currentIndex = newIndex;
             const currentItem = haikuList[currentIndex];
 
-            // 俳句本文をセット
+            // 俳句本文
             document.getElementById('haikuStage').textContent = currentItem.haiku;
 
-            // 情報テキストの組み上げ（例：夏（三夏） 季語：風鈴 西田上酢）
-            const seasonText = currentItem.seasonDetail || '';
-            const kigoText = currentItem.kigo ? ` 季語：${currentItem.kigo}` : '';
-            const authorText = currentItem.author ? `<span class="info-author">${currentItem.author}</span>` : '';
-            
-            document.getElementById('infoDisplay').innerHTML = `${seasonText}${kigoText}${authorText}`;
+            // 上段テキスト（例：春朝し（初春））
+            const kigo = currentItem.kigo || '';
+            const season = currentItem.seasonDetail ? `（${currentItem.seasonDetail}）` : '';
+            document.getElementById('infoKigoSeason').textContent = `${kigo}${season}`;
+
+            // 下段テキスト（例：西田上酢）
+            document.getElementById('infoAuthor').textContent = currentItem.author || '';
         }
 
         // --- 操作系イベント設定 ---
 
-        // 1. クリック操作（画面どこでもクリックで次へ）
+        // 1. クリック操作
         document.addEventListener('click', (e) => {
             if (e.target.closest('#infoBtn') || e.target.closest('#infoDisplay')) return;
 
@@ -219,7 +234,7 @@
             showNextHaiku();
         });
 
-        // 2. キーボード操作（矢印キー・スペース・Enter）
+        // 2. キーボード操作
         document.addEventListener('keydown', (e) => {
             if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', ' ', 'Enter'].includes(e.key)) {
                 if (isInfoOpen) {
@@ -230,7 +245,7 @@
             }
         });
 
-        // 3. タッチ・スワイプ操作（スマホ用）
+        // 3. タッチ・スワイプ操作
         let touchStartX = 0;
         let touchStartY = 0;
 
@@ -256,7 +271,7 @@
             }
         }, {passive: true});
 
-        // i ボタン / 情報表示の切り替え
+        // i ボタン切り替え
         const infoBtn = document.getElementById('infoBtn');
         const infoDisplay = document.getElementById('infoDisplay');
 
