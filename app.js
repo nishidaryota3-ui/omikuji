@@ -1,8 +1,8 @@
 const SPREADSHEET_ID = '1m0y8AOJNx1Ad4I44poPheQAQNki1-QQIwi9wSw8jaBg';
 
-let haikuDatabase = [];    // 全データ
-let haikuHistory = [];     // ランダムシャッフルされた閲覧順リスト
-let historyIndex = 0;      // 現在の履歴位置
+let haikuDatabase = [];
+let haikuHistory = [];
+let historyIndex = 0;
 let isInfoOpen = false;
 
 // スワイプ検知変数
@@ -22,11 +22,10 @@ window.onload = function() {
     script.src = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?range=A:H&tqx=responseHandler:mainDataReceived`;
     document.body.appendChild(script);
 
-    // 操作イベントの初期化
+    // 操作イベントの設定
     initEventListeners();
 };
 
-// ローカルストレージからのキャッシュ復元
 function restoreCachedData() {
     try {
         const cached = localStorage.getItem('omikuji_light_database');
@@ -42,7 +41,6 @@ function restoreCachedData() {
     }
 }
 
-// データ受信処理
 window.mainDataReceived = function(data) {
     try {
         const rows = data.table.rows;
@@ -61,7 +59,6 @@ window.mainDataReceived = function(data) {
             haikuDatabase = rawList;
             localStorage.setItem('omikuji_light_database', JSON.stringify(haikuDatabase));
 
-            // 初回読み込み・または更新時
             if (haikuHistory.length === 0) {
                 setupHaikuHistory();
                 displayCurrentHaiku(false);
@@ -77,7 +74,6 @@ window.mainDataReceived = function(data) {
     }
 };
 
-// ランダムシャッフル履歴の初期構築
 function setupHaikuHistory() {
     haikuHistory = [...haikuDatabase];
     for (let i = haikuHistory.length - 1; i > 0; i--) {
@@ -87,31 +83,26 @@ function setupHaikuHistory() {
     historyIndex = 0;
 }
 
-// 句の進む・戻る移動（季寄せと同じ方向感：+1で未来へ進む、-1で過去に戻る）
 function changeHaiku(direction) {
     if (isInfoOpen) toggleInfo(false);
 
     if (direction > 0) {
-        // 次の句へ進む
         if (historyIndex < haikuHistory.length - 1) {
             historyIndex++;
         } else {
-            // 一巡したら再シャッフル
             setupHaikuHistory();
         }
     } else if (direction < 0) {
-        // 前の句へ戻る
         if (historyIndex > 0) {
             historyIndex--;
         } else {
-            return; // 最初の句なら戻らない
+            return;
         }
     }
 
     displayCurrentHaiku(true);
 }
 
-// 現在の句を表示
 function displayCurrentHaiku(withAnimation) {
     if (haikuHistory.length === 0) return;
 
@@ -119,11 +110,10 @@ function displayCurrentHaiku(withAnimation) {
     const currentItem = haikuHistory[historyIndex];
 
     const render = () => {
-        // 俳句本文
+        // 元のロジックそのまま：俳句本文 ＆ 文字間隔（letter-spacing）自動計算
         const text = currentItem.haiku;
         stage.textContent = text;
 
-        // 文字数に応じた文字間隔の自動計算
         const charCount = text.length;
         let spacing = 0.15;
         if (charCount > 14) {
@@ -137,10 +127,8 @@ function displayCurrentHaiku(withAnimation) {
         document.getElementById('infoKigoSeason').textContent = `${kigo}${season}`;
         document.getElementById('infoAuthor').textContent = currentItem.author || '';
 
-        // 矢印ボタンの表示状態制御
+        // 矢印ボタンの表示状態
         const prevBtn = document.getElementById('prevBtn');
-        const nextBtn = document.getElementById('nextBtn');
-        
         if (historyIndex === 0) {
             prevBtn.classList.add('disabled');
         } else {
@@ -158,7 +146,6 @@ function displayCurrentHaiku(withAnimation) {
     }
 }
 
-// i ボタン表示切り替え
 function toggleInfo(show) {
     isInfoOpen = show;
     const infoBtn = document.getElementById('infoBtn');
@@ -173,13 +160,11 @@ function toggleInfo(show) {
     }
 }
 
-// 操作イベントの集約設定
 function initEventListeners() {
-    const container = document.getElementById('app-container');
     const infoBtn = document.getElementById('infoBtn');
     const infoDisplay = document.getElementById('infoDisplay');
 
-    // 1. iボタンタップ
+    // 1. iボタン・情報カードタップ
     infoBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         toggleInfo(!isInfoOpen);
@@ -190,8 +175,8 @@ function initEventListeners() {
         toggleInfo(false);
     });
 
-    // 2. 画面タップ（iボタン以外のタップで次の句へ進む）
-    container.addEventListener('click', (e) => {
+    // 2. 画面タップで次の句へ
+    document.addEventListener('click', (e) => {
         if (e.target.closest('#infoBtn') || e.target.closest('#infoDisplay') || e.target.closest('.nav-arrow')) return;
 
         if (isInfoOpen) {
@@ -202,13 +187,13 @@ function initEventListeners() {
         changeHaiku(1);
     });
 
-    // 3. スワイプ操作（季寄せと共通の感覚）
-    container.addEventListener('touchstart', (e) => {
+    // 3. スワイプ操作（季寄せと共通の感度）
+    document.addEventListener('touchstart', (e) => {
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
     }, { passive: true });
 
-    container.addEventListener('touchend', (e) => {
+    document.addEventListener('touchend', (e) => {
         if (e.target.closest('#infoBtn') || e.target.closest('#infoDisplay')) return;
 
         const touchEndX = e.changedTouches[0].clientX;
@@ -217,7 +202,6 @@ function initEventListeners() {
         const diffX = touchEndX - touchStartX;
         const diffY = touchEndY - touchStartY;
 
-        // 横スワイプ判定
         if (Math.abs(diffX) > 35 && Math.abs(diffX) > Math.abs(diffY)) {
             if (diffX > 0) {
                 changeHaiku(1);  // 右スワイプで進む
