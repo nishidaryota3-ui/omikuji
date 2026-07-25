@@ -1,49 +1,158 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>おみ句じ</title>
+:root {
+    --bg-color: #fcfbf7;
+    --text-color: #2b2b2b;
+    --sub-color: #888888;
+}
 
-    <!-- PWA / スマホアプリ化の設定 -->
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="おみ句じ">
-    <meta name="application-name" content="おみ句じ">
-    <meta name="theme-color" content="#fcfbf7">
-    
-    <!-- アプリアイコン＆マニフェスト設定 -->
-    <link rel="icon" type="image/png" sizes="192x192" href="icon.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="icon.png">
-    <link rel="manifest" href="manifest.json">
-    
-    <!-- スタイルシート読み込み -->
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-tap-highlight-color: transparent;
+}
 
-    <div id="app-container">
-        <!-- 矢印ナビゲーションボタン（控えめな小ぶりサイズ） -->
-        <button id="prevBtn" class="nav-arrow arrow-left disabled" onclick="changeHaiku(1)">＜</button>
-        <button id="nextBtn" class="nav-arrow arrow-right" onclick="changeHaiku(-1)">＞</button>
+body, html {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-family: "Hiragino Mincho ProN", "Yu Mincho", "Shippori Mincho", serif;
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: pointer;
+}
 
-        <!-- 俳句メイン表示エリア -->
-        <div id="haikuStage" class="haiku-stage">
-            <div class="loader">読み込み中...</div>
-        </div>
+/* アプリ全体のコンテナ（完全中央揃え） */
+#app-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
 
-        <!-- 右上 i ボタン -->
-        <div id="infoBtn" class="info-trigger">i</div>
+/* 縦書きの俳句表示エリア（絶対1列・文字間隔自動調整・完全中央復元） */
+.haiku-stage {
+    writing-mode: vertical-rl;
+    -webkit-writing-mode: vertical-rl;
+    text-orientation: upright;
+    font-size: 2rem;
+    line-height: 1;
+    white-space: nowrap; /* 絶対に2列に折り返さない */
+    max-height: 80vh;
+    max-width: 80vw;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
 
-        <!-- 右上 情報表示テキスト -->
-        <div id="infoDisplay" class="info-display">
-            <div id="infoKigoSeason" class="info-kigo-season"></div>
-            <div id="infoAuthor" class="info-author"></div>
-        </div>
-    </div>
+/* 句切り替え時のアニメーション */
+.haiku-stage.fade-out {
+    opacity: 0;
+    transform: scale(0.98);
+}
 
-    <!-- JavaScriptプログラム読み込み -->
-    <script src="app.js"></script>
-</body>
-</html>
+/* 🏹 矢印ナビゲーションボタン（中央配置＆控えめな色・サイズ） */
+.nav-arrow { 
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.0rem;
+    color: #a0998c;
+    cursor: pointer; 
+    padding: 20px 15px;
+    z-index: 25;
+    background: none;
+    border: none; 
+    transition: color 0.2s ease, opacity 0.2s ease, transform 0.1s ease;
+    opacity: 0.6;
+    user-select: none;
+}
+.nav-arrow:active { transform: translateY(-50%) scale(0.9); }
+.nav-arrow:hover { color: #2b2b2b; opacity: 1; }
+
+.arrow-left { left: calc(5px + env(safe-area-inset-left)); } 
+.arrow-right { right: calc(5px + env(safe-area-inset-right)); }
+.nav-arrow.disabled { visibility: hidden; }
+
+/* 右上 i ボタン（タップ反応領域68px完全復元） */
+.info-trigger {
+    position: fixed;
+    top: calc(2px + env(safe-area-inset-top));
+    right: 5px;
+    width: 68px;
+    height: 68px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-family: serif;
+    font-style: italic;
+    font-size: 1.1rem;
+    color: var(--sub-color);
+    cursor: pointer;
+    z-index: 100;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.info-trigger:hover {
+    opacity: 1;
+}
+
+/* 右上の情報表示エリア（中央揃え構造・完全復元） */
+.info-display {
+    position: fixed;
+    top: calc(16px + env(safe-area-inset-top));
+    right: 15px;
+    z-index: 90;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    background-color: rgba(252, 251, 247, 0.9);
+    padding: 6px 12px;
+    border-radius: 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    width: max-content;
+}
+
+.info-display.active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* 上段：季語（詳細季節） */
+.info-kigo-season {
+    font-size: 0.85rem;
+    color: var(--sub-color);
+    letter-spacing: 0.05em;
+    text-align: center;
+    width: 100%;
+    white-space: nowrap;
+}
+
+/* 下段：作者 */
+.info-author {
+    font-size: 0.95rem;
+    color: var(--text-color);
+    letter-spacing: 0.05em;
+    margin-top: 3px;
+    text-align: center;
+    width: 100%;
+    white-space: nowrap;
+}
+
+/* 初回ローディング表示 */
+.loader {
+    font-size: 1rem;
+    color: var(--sub-color);
+    letter-spacing: 0.2em;
+    writing-mode: horizontal-tb;
+}
