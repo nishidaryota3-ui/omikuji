@@ -6,153 +6,29 @@
     <title>おみ句じ</title>
 
     <!-- PWA / スマホアプリ化の設定 -->
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="おみ句じ">
+    <meta name="application-name" content="おみ句じ">
     <meta name="theme-color" content="#fcfbf7">
     
     <!-- アプリアイコン＆マニフェスト設定 -->
-    <link rel="apple-touch-icon" href="icon.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icon.png">
     <link rel="manifest" href="manifest.json">
     
-    <style>
-        :root {
-            --bg-color: #fcfbf7;
-            --text-color: #2b2b2b;
-            --sub-color: #888888;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        body, html {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: "Hiragino Mincho ProN", "Yu Mincho", "Shippori Mincho", serif;
-            user-select: none;
-            -webkit-user-select: none;
-            cursor: pointer;
-        }
-
-        /* アプリ全体のコンテナ */
-        #app-container {
-            position: relative;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-
-        /* 縦書きの俳句表示エリア（絶対1列・文字間隔自動調整） */
-        .haiku-stage {
-            writing-mode: vertical-rl;
-            -webkit-writing-mode: vertical-rl;
-            text-orientation: upright;
-            font-size: 2rem;
-            line-height: 1;
-            white-space: nowrap; /* 絶対に2列に折り返さない */
-            max-height: 80vh;
-            max-width: 80vw;
-            transition: opacity 0.25s ease, transform 0.25s ease;
-        }
-
-        /* 句切り替え時のアニメーション */
-        .haiku-stage.fade-out {
-            opacity: 0;
-            transform: scale(0.98);
-        }
-
-        /* 右上 i ボタン（タップ反応領域を68pxへ大幅拡大） */
-        .info-trigger {
-            position: fixed;
-            top: calc(2px + env(safe-area-inset-top));
-            right: 5px;
-            width: 68px;             /* タップ反応エリアの幅をさらに20%拡大 */
-            height: 68px;            /* タップ反応エリアの高さをさらに20%拡大 */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-family: serif;
-            font-style: italic;
-            font-size: 1.1rem;
-            color: var(--sub-color);
-            cursor: pointer;
-            z-index: 100;
-            opacity: 0.6;
-            transition: opacity 0.2s;
-        }
-
-        .info-trigger:hover {
-            opacity: 1;
-        }
-
-        /* 右上の情報表示エリア（中央揃え構造） */
-        .info-display {
-            position: fixed;
-            top: calc(16px + env(safe-area-inset-top));
-            right: 15px;
-            z-index: 90;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-            background-color: rgba(252, 251, 247, 0.9);
-            padding: 6px 12px;
-            border-radius: 6px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            text-align: center;
-            width: max-content;
-        }
-
-        .info-display.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        /* 上段：季語（詳細季節） */
-        .info-kigo-season {
-            font-size: 0.85rem;
-            color: var(--sub-color);
-            letter-spacing: 0.05em;
-            text-align: center;
-            width: 100%;
-            white-space: nowrap;
-        }
-
-        /* 下段：作者 */
-        .info-author {
-            font-size: 0.95rem;
-            color: var(--text-color);
-            letter-spacing: 0.05em;
-            margin-top: 3px;
-            text-align: center;
-            width: 100%;
-            white-space: nowrap;
-        }
-
-        /* 初回ローディング表示 */
-        .loader {
-            font-size: 1rem;
-            color: var(--sub-color);
-            letter-spacing: 0.2em;
-            writing-mode: horizontal-tb;
-        }
-    </style>
+    <!-- スタイルシート読み込み -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
     <div id="app-container">
-        <!-- 俳句メイン表示 -->
+        <!-- 矢印ナビゲーションボタン（控えめな小ぶりサイズ） -->
+        <button id="prevBtn" class="nav-arrow arrow-left disabled" onclick="changeHaiku(1)">＜</button>
+        <button id="nextBtn" class="nav-arrow arrow-right" onclick="changeHaiku(-1)">＞</button>
+
+        <!-- 俳句メイン表示エリア -->
         <div id="haikuStage" class="haiku-stage">
             <div class="loader">読み込み中...</div>
         </div>
@@ -167,163 +43,7 @@
         </div>
     </div>
 
-    <script>
-        const SPREADSHEET_ID = '1m0y8AOJNx1Ad4I44poPheQAQNki1-QQIwi9wSw8jaBg';
-        
-        let haikuList = [];
-        let currentIndex = -1;
-        let isInfoOpen = false;
-
-        // JSONPデータ受信
-        window.mainDataReceived = function(data) {
-            const rows = data.table.rows;
-            
-            // データを配列化
-            const rawList = rows.map(r => {
-                const getVal = (colIdx) => (r.c && r.c[colIdx] && r.c[colIdx].v !== null) ? String(r.c[colIdx].v) : '';
-                return {
-                    haiku: getVal(0).trim(),      // A列: 俳句
-                    author: getVal(1).trim(),     // B列: 作者名
-                    kigo: getVal(3).trim(),       // D列: 季語
-                    seasonDetail: getVal(7).trim() // H列: 詳細季節
-                };
-            }).filter(item => item.haiku !== '');
-
-            // 1行目の見出し（「俳句」など）を自動除外する
-            if (rawList.length > 0 && (rawList[0].haiku === '俳句' || rawList[0].haiku === '句')) {
-                haikuList = rawList.slice(1);
-            } else {
-                haikuList = rawList;
-            }
-
-            if (haikuList.length > 0) {
-                showNextHaiku();
-            } else {
-                document.getElementById('haikuStage').innerHTML = '俳句が見つかりません';
-            }
-        };
-
-        // 次の句（ランダム表示）
-        function showNextHaiku() {
-            if (haikuList.length === 0) return;
-            
-            if (isInfoOpen) toggleInfo(false);
-
-            const stage = document.getElementById('haikuStage');
-            stage.classList.add('fade-out');
-
-            setTimeout(() => {
-                let newIndex;
-                do {
-                    newIndex = Math.floor(Math.random() * haikuList.length);
-                } while (newIndex === currentIndex && haikuList.length > 1);
-                
-                currentIndex = newIndex;
-                const currentItem = haikuList[currentIndex];
-
-                // 俳句本文
-                const text = currentItem.haiku;
-                stage.textContent = text;
-
-                // --- 文字数に応じた文字間隔（letter-spacing）の自動計算 ---
-                const charCount = text.length;
-                let spacing = 0.15; // 基本間隔 (em)
-
-                if (charCount > 14) {
-                    spacing = Math.max(0.01, 0.15 - ((charCount - 14) * 0.025));
-                }
-                stage.style.letterSpacing = `${spacing}em`;
-
-                // 右上情報データ
-                const kigo = currentItem.kigo || '';
-                const season = currentItem.seasonDetail ? `（${currentItem.seasonDetail}）` : '';
-                document.getElementById('infoKigoSeason').textContent = `${kigo}${season}`;
-                document.getElementById('infoAuthor').textContent = currentItem.author || '';
-
-                stage.classList.remove('fade-out');
-            }, 200);
-        }
-
-        // --- 操作系イベント設定 ---
-
-        // 1. クリック操作
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('#infoBtn') || e.target.closest('#infoDisplay')) return;
-
-            if (isInfoOpen) {
-                toggleInfo(false);
-                return;
-            }
-
-            showNextHaiku();
-        });
-
-        // 2. キーボード操作
-        document.addEventListener('keydown', (e) => {
-            if (['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', ' ', 'Enter'].includes(e.key)) {
-                if (isInfoOpen) {
-                    toggleInfo(false);
-                } else {
-                    showNextHaiku();
-                }
-            }
-        });
-
-        // 3. タッチ・スワイプ操作
-        let touchStartX = 0;
-        let touchStartY = 0;
-
-        document.addEventListener('touchstart', (e) => {
-            touchStartX = e.changedTouches[0].screenX;
-            touchStartY = e.changedTouches[0].screenY;
-        }, {passive: true});
-
-        document.addEventListener('touchend', (e) => {
-            if (e.target.closest('#infoBtn') || e.target.closest('#infoDisplay')) return;
-
-            const touchEndX = e.changedTouches[0].screenX;
-            const touchEndY = e.changedTouches[0].screenY;
-            const diffX = Math.abs(touchEndX - touchStartX);
-            const diffY = Math.abs(touchEndY - touchStartY);
-
-            if (diffX > 30 || diffY > 30 || (diffX < 10 && diffY < 10)) {
-                if (isInfoOpen) {
-                    toggleInfo(false);
-                } else {
-                    showNextHaiku();
-                }
-            }
-        }, {passive: true});
-
-        // i ボタン切り替え
-        const infoBtn = document.getElementById('infoBtn');
-        const infoDisplay = document.getElementById('infoDisplay');
-
-        infoBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleInfo(!isInfoOpen);
-        });
-
-        infoDisplay.addEventListener('click', (e) => {
-            e.stopPropagation();
-            toggleInfo(false);
-        });
-
-        function toggleInfo(show) {
-            isInfoOpen = show;
-            if (isInfoOpen) {
-                infoBtn.style.opacity = '0';
-                infoDisplay.classList.add('active');
-            } else {
-                infoBtn.style.opacity = '0.6';
-                infoDisplay.classList.remove('active');
-            }
-        }
-
-        // データ取得
-        const script = document.createElement('script');
-        script.src = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/gviz/tq?range=A:H&tqx=responseHandler:mainDataReceived`;
-        document.body.appendChild(script);
-    </script>
+    <!-- JavaScriptプログラム読み込み -->
+    <script src="app.js"></script>
 </body>
 </html>
