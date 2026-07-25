@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>おみ句じ</title>
+
+    <!-- PWA / スマホアプリ化の設定 -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="おみ句じ">
+    <meta name="application-name" content="おみ句じ">
+    <meta name="theme-color" content="#fcfbf7">
+    
+    <!-- アプリアイコン＆マニフェスト設定 -->
+    <link rel="icon" type="image/png" sizes="192x192" href="icon.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="icon.png">
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- スタイルシート読み込み -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="app-container">
+        <!-- 矢印ナビゲーションボタン（控えめな小ぶりサイズ） -->
+        <button id="prevBtn" class="nav-arrow arrow-left disabled" onclick="changeHaiku(1)">＜</button>
+        <button id="nextBtn" class="nav-arrow arrow-right" onclick="changeHaiku(-1)">＞</button>
+
+        <!-- 俳句メイン表示エリア -->
+        <div id="haikuStage" class="haiku-stage">
+            <div class="loader">読み込み中...</div>
+        </div>
+
+        <!-- 右上 i ボタン -->
+        <div id="infoBtn" class="info-trigger">i</div>
+
+        <!-- 右上 情報表示テキスト -->
+        <div id="infoDisplay" class="info-display">
+            <div id="infoKigoSeason" class="info-kigo-season"></div>
+            <div id="infoAuthor" class="info-author"></div>
+        </div>
+    </div>
+
+    <!-- JavaScriptプログラム読み込み -->
+    <script src="app.js"></script>
+</body>
+</html>
