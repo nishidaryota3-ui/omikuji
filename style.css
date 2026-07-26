@@ -34,13 +34,13 @@ body, html {
     padding: 20px;
 }
 
-/* 縦書きの俳句表示エリア（絶対1列・文字間隔自動調整・完全中央復元） */
+/* 縦書きの俳句表示エリア（季寄せと同等のvhスケール指定で横画面でもはみ出さない） */
 .haiku-stage {
     writing-mode: vertical-rl;
     -webkit-writing-mode: vertical-rl;
     text-orientation: upright;
-    font-size: 2rem;
-    line-height: 1;
+    font-size: 3.2vh; /* 画面高さに合わせて自動拡大・縮小 */
+    line-height: 1.0;
     white-space: nowrap; /* 絶対に2列に折り返さない */
     max-height: 80vh;
     max-width: 80vw;
@@ -48,6 +48,7 @@ body, html {
     display: flex;
     justify-content: center;
     align-items: center;
+    font-weight: 500;
 }
 
 /* 句切り替え時のアニメーション */
@@ -79,7 +80,7 @@ body, html {
 .arrow-right { right: calc(5px + env(safe-area-inset-right)); }
 .nav-arrow.disabled { visibility: hidden; }
 
-/* 右上 i ボタン（タップ反応領域68px完全復元） */
+/* 右上 i ボタン（タップ反応領域68px） */
 .info-trigger {
     position: fixed;
     top: calc(2px + env(safe-area-inset-top));
@@ -103,7 +104,7 @@ body, html {
     opacity: 1;
 }
 
-/* 右上の情報表示エリア（中央揃え構造・完全復元） */
+/* 右上の情報表示エリア（中央揃え構造） */
 .info-display {
     position: fixed;
     top: calc(16px + env(safe-area-inset-top));
