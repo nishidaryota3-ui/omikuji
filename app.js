@@ -103,6 +103,24 @@ function changeHaiku(direction) {
     displayCurrentHaiku(true);
 }
 
+// 🌸 ルビ変換処理を追加
+function formatRubyText(text) {
+    if (!text) return '';
+    let str = String(text);
+
+    str = str.replace(/｜/g, '|');
+
+    str = str.replace(/\|([^《（(]+)[《（(]([^》）)]+)[》）)]/g, function(match, targetText, rubyText) {
+        return '<span class="ruby-block"><ruby>' + targetText + '<rt>' + rubyText + '</rt></ruby></span>';
+    });
+
+    str = str.replace(/([\u4E00-\u9FFF\u3005]+)[《（(]([^》）)]+)[》）)]/g, function(match, targetText, rubyText) {
+        return '<span class="ruby-block"><ruby>' + targetText + '<rt>' + rubyText + '</rt></ruby></span>';
+    });
+
+    return str;
+}
+
 function displayCurrentHaiku(withAnimation) {
     if (haikuHistory.length === 0) return;
 
@@ -112,7 +130,8 @@ function displayCurrentHaiku(withAnimation) {
     const render = () => {
         // 元のロジックそのまま：俳句本文 ＆ 文字間隔（letter-spacing）自動計算
         const text = currentItem.haiku;
-        stage.textContent = text;
+        // 🌸 textContentからinnerHTMLに変更し、ルビ変換を通す
+        stage.innerHTML = formatRubyText(text);
 
         const charCount = text.length;
         let spacing = 0.15;
