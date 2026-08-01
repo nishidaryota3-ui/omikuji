@@ -51,6 +51,12 @@ body, html {
     font-weight: 500;
 }
 
+/* 🌸 縦書きルビ（ふりがな）用のデザイン調整を追記 */
+.haiku-stage ruby { ruby-position: over; -webkit-ruby-position: over; }
+.haiku-stage rt { font-size: 0.45em; letter-spacing: 0.1em; color: #555555; }
+.ruby-block { display: inline-block; writing-mode: vertical-rl; }
+ruby { ruby-position: over; }
+
 /* 句切り替え時のアニメーション */
 .haiku-stage.fade-out {
     opacity: 0;
