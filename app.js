@@ -74,12 +74,62 @@ window.mainDataReceived = function(data) {
     }
 };
 
+/**
+ * 🌸 作者の出現頻度を完全に均等化した履歴リスト（haikuHistory）を生成する関数
+ */
 function setupHaikuHistory() {
-    haikuHistory = [...haikuDatabase];
-    for (let i = haikuHistory.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [haikuHistory[i], haikuHistory[j]] = [haikuHistory[j], haikuHistory[i]];
+    if (haikuDatabase.length === 0) return;
+
+    // 1. 作者ごとに俳句をグループ化する
+    const authorGroups = {};
+    haikuDatabase.forEach(item => {
+        const author = item.author || '作者不詳';
+        if (!authorGroups[author]) {
+            authorGroups[author] = [];
+        }
+        // 各作者の持っている句のリストをシャッフルして保持（被りを極力防ぐため）
+        authorGroups[author].push(item);
+    });
+
+    // 作者ごとの句リストをあらかじめランダムシャッフルしておく
+    Object.keys(authorGroups).forEach(author => {
+        const list = authorGroups[author];
+        for (let i = list.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [list[i], list[j]] = [list[j], list[i]];
+        }
+    });
+
+    const authors = Object.keys(authorGroups);
+    const newHistory = [];
+    const totalCount = haikuDatabase.length; // データベース全件数分の履歴を作成
+
+    // 作者ごとの現在参照インデックス
+    const authorIndices = {};
+    authors.forEach(a => authorIndices[a] = 0);
+
+    // 2. 「作者を均等確率で選択」→「その作者の句を1つ追加」を繰り返して全件分生成
+    while (newHistory.length < totalCount) {
+        // 作者リストをランダムに1人選ぶ
+        const randomAuthor = authors[Math.floor(Math.random() * authors.length)];
+        const group = authorGroups[randomAuthor];
+
+        // 選ばれた作者の句を順番に取得（末尾までいったら再度シャッフルしてループ）
+        let idx = authorIndices[randomAuthor];
+        if (idx >= group.length) {
+            // その作者の句を一巡したら再シャッフル
+            for (let i = group.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [group[i], group[j]] = [group[j], group[i]];
+            }
+            idx = 0;
+        }
+
+        newHistory.push(group[idx]);
+        authorIndices[randomAuthor] = idx + 1;
     }
+
+    haikuHistory = newHistory;
     historyIndex = 0;
 }
 
@@ -90,6 +140,7 @@ function changeHaiku(direction) {
         if (historyIndex < haikuHistory.length - 1) {
             historyIndex++;
         } else {
+            // 全件見終わったら再度「作者均等」で再構築
             setupHaikuHistory();
         }
     } else if (direction < 0) {
@@ -103,7 +154,7 @@ function changeHaiku(direction) {
     displayCurrentHaiku(true);
 }
 
-// 🌸 ルビ変換処理を追加
+// 🌸 ルビ変換処理
 function formatRubyText(text) {
     if (!text) return '';
     let str = String(text);
@@ -128,9 +179,7 @@ function displayCurrentHaiku(withAnimation) {
     const currentItem = haikuHistory[historyIndex];
 
     const render = () => {
-        // 元のロジックそのまま：俳句本文 ＆ 文字間隔（letter-spacing）自動計算
         const text = currentItem.haiku;
-        // 🌸 textContentからinnerHTMLに変更し、ルビ変換を通す
         stage.innerHTML = formatRubyText(text);
 
         const charCount = text.length;
@@ -206,7 +255,7 @@ function initEventListeners() {
         changeHaiku(1);
     });
 
-    // 3. スワイプ操作（季寄せと共通の感度）
+    // 3. スワイプ操作（左右スワイプ）
     document.addEventListener('touchstart', (e) => {
         touchStartX = e.touches[0].clientX;
         touchStartY = e.touches[0].clientY;
