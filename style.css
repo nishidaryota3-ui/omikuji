@@ -45,9 +45,11 @@ body, html {
     max-height: 80vh;
     max-width: 80vw;
     transition: opacity 0.25s ease, transform 0.25s ease;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    
+    /* 🌸 ガタガタを防ぐための修正部分（flexをやめてblockにする） */
+    display: block;
+    text-align: center;
+    
     font-weight: 500;
 }
 
